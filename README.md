@@ -14,5 +14,10 @@
 
 ## 모델 평가
 ![Example Graph](graph.png)
+TK : Tokenizer
+TF : TF-IDF
+NB : Naive Bayes
+FT : FastText
+LR : Logistic Regression
 
 ## 프로그램 정보
