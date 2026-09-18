@@ -47,14 +47,10 @@ def main():
     mc = ModelCheckpoint('best_model_TFCNN.keras', monitor='val_loss', mode='min', verbose=1, save_best_only=True)
     history = model.fit(X_train_tfidf, y_train, epochs=100, batch_size=128, validation_split=0.2, callbacks=[es, mc])
 
-    # NOTE: 원본 노트북 그대로 유지 - 학습 때 쓴 vectorizer(max_features=5000)가 아니라
-    # max_features=10000짜리 새 vectorizer로 다시 fit해서 평가함. 모델이 학습 당시와
-    # 다른 shape/의미의 입력을 받게 되어 evaluate 점수가 거의 0으로 나오는 원인.
-    # 별도 이슈로 학습에 쓴 vectorizer 재사용하도록 수정 예정 - 지금은 원본 동작 보존.
-    eval_vectorizer = TfidfVectorizer(max_features=10000)
-    X_train_tfidf_eval = eval_vectorizer.fit_transform(X_train)
-    X_test_tfidf_eval = eval_vectorizer.transform(X_test)
-    loss, f1 = model.evaluate(X_test_tfidf_eval, y_test)
+    # 학습 때 쓴 vectorizer(X_test_tfidf)로 그대로 평가. 이전엔 max_features가 다른
+    # 새 vectorizer로 다시 fit해서 모델이 학습 당시와 다른 shape/의미의 입력을
+    # 받았고, 그게 evaluate 점수가 거의 0으로 나온 원인이었음.
+    loss, f1 = model.evaluate(X_test_tfidf, y_test)
     print("\n 테스트 손실값: %.4f, f1점수: %.4f" % (loss, f1))
 
     epochs = range(1, len(history.history['f1_score']) + 1)

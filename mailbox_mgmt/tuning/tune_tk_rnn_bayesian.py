@@ -7,8 +7,10 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 from ..data_prep import build_tokenizer, load_data, split_data
 from ..metrics import f1_score
+from .results import save_tuning_result
 
-CHECKPOINT_PATH = 'best_model.keras'
+PROJECT_NAME = 'TK_RNN_c9'
+CHECKPOINT_PATH = f'best_model_{PROJECT_NAME}.keras'
 
 
 def build_model_factory(vocab_size, max_len):
@@ -54,7 +56,7 @@ def main():
         max_trials=30,
         executions_per_trial=1,
         directory='C:\\keras_tuner',
-        project_name='TK_RNN_c9',
+        project_name=PROJECT_NAME,
     )
 
     es = EarlyStopping(monitor='val_f1_score', mode='max', verbose=1, patience=15)
@@ -68,6 +70,8 @@ def main():
     print("Best hyperparameters:")
     for param, value in best_hp.values.items():
         print(f"{param}: {value}")
+
+    save_tuning_result(PROJECT_NAME, best_model, best_hp)
 
     return best_model, best_hp
 

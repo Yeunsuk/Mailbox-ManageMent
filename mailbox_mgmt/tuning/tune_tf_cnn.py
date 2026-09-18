@@ -7,8 +7,10 @@ from tensorflow.keras.models import Sequential
 
 from ..data_prep import load_data, split_data
 from ..metrics import f1_score
+from .results import save_tuning_result
 
-CHECKPOINT_PATH = 'best_model.keras'
+PROJECT_NAME = 'TF_Den_c5'
+CHECKPOINT_PATH = f'best_model_{PROJECT_NAME}.keras'
 
 
 def vectorize(X_train, X_test, max_features=5000):
@@ -61,7 +63,7 @@ def main():
         max_epochs=10,
         factor=2,
         directory='C:\\keras_tuner',
-        project_name='TF_Den_c5',
+        project_name=PROJECT_NAME,
     )
 
     es = EarlyStopping(monitor='val_f1_score', mode='max', verbose=1, patience=15)
@@ -75,6 +77,8 @@ def main():
     print("Best hyperparameters:")
     for param, value in best_hp.values.items():
         print(f"{param}: {value}")
+
+    save_tuning_result(PROJECT_NAME, best_model, best_hp)
 
     return best_model, best_hp
 

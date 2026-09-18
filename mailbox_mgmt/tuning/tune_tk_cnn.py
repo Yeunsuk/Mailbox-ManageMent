@@ -7,12 +7,10 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 from ..data_prep import build_tokenizer, load_data, split_data
 from ..metrics import f1_score
+from .results import save_tuning_result
 
-# NOTE: 원본 노트북 그대로 - 이 튜너들은 전부 'best_model.keras'라는 같은
-# 파일명에 저장함. 다른 튜닝 스크립트를 실행하면 이전 결과를 덮어씀.
-# 실험 구분하려면 project_name 별로 checkpoint 경로도 분리하는 게 좋음
-# (별도 이슈 - 지금은 원본 동작 보존).
-CHECKPOINT_PATH = 'best_model.keras'
+PROJECT_NAME = 'TK_CNN_c6'
+CHECKPOINT_PATH = f'best_model_{PROJECT_NAME}.keras'
 
 
 def build_model_factory(vocab_size):
@@ -60,7 +58,7 @@ def main():
         max_epochs=10,
         factor=3,
         directory='C:\\keras_tuner',
-        project_name='TK_CNN_c6',
+        project_name=PROJECT_NAME,
     )
 
     es = EarlyStopping(monitor='val_f1_score', mode='max', verbose=1, patience=15)
@@ -74,6 +72,8 @@ def main():
     print("Best hyperparameters:")
     for param, value in best_hp.values.items():
         print(f"{param}: {value}")
+
+    save_tuning_result(PROJECT_NAME, best_model, best_hp)
 
     return best_model, best_hp
 

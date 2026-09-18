@@ -1,16 +1,23 @@
+import tensorflow as tf
 from tensorflow.keras import backend as K
-from tensorflow.keras.metrics import Precision, Recall
-
-# NOTE: 원본 노트북 그대로 유지. Precision()/Recall()은 stateful metric 객체라
-# Keras가 매 배치/에폭마다 자동으로 reset해주지 않음 (Metric 서브클래스가 아닌
-# 순수 함수로 model.compile(metrics=[f1_score])에 전달되기 때문). 즉 여기서
-# 나오는 f1_score 값은 "이번 배치 성능"이 아니라 프로세스 시작 이후 누적 평균.
-# 별도 이슈로 stateless 버전으로 교체 예정 - 지금은 분리 작업만 진행.
-precision_metric = Precision()
-recall_metric = Recall()
 
 
 def f1_score(y_true, y_pred):
-    precision = precision_metric(y_true, y_pred)
-    recall = recall_metric(y_true, y_pred)
+    """배치 단위로 매번 새로 계산되는 stateless F1.
+
+    이전 버전은 Precision()/Recall() stateful 객체를 재사용해서 프로세스
+    시작 이후 전체 누적 평균을 반환했음 (에폭이 지나며 오르는 것처럼 보이는
+    값이 실제 성능이 아니었음). 여기서는 이번 배치의 TP/예측양성/실제양성만
+    가지고 매번 새로 계산하므로 호출 간 상태를 공유하지 않는다.
+    """
+    y_true = tf.cast(y_true, tf.float32)
+    y_pred = tf.cast(tf.greater(y_pred, 0.5), tf.float32)
+
+    true_positives = tf.reduce_sum(y_true * y_pred)
+    predicted_positives = tf.reduce_sum(y_pred)
+    actual_positives = tf.reduce_sum(y_true)
+
+    precision = true_positives / (predicted_positives + K.epsilon())
+    recall = true_positives / (actual_positives + K.epsilon())
+
     return 2 * (precision * recall) / (precision + recall + K.epsilon())
