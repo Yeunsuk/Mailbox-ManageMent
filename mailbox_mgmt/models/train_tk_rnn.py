@@ -7,9 +7,10 @@ from tensorflow.keras.layers import Dense, Dropout, Embedding, LSTM
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
-from ..config import TKRNN_MODEL, TOKENIZER_JSON
+from ..config import MODEL_CONFIG_JSON, TKRNN_MODEL, TOKENIZER_JSON
 from ..data_prep import build_tokenizer, load_data, split_data
 from ..metrics import f1_score
+from ..seed import set_global_seed
 
 
 def build_model(vocab_size, max_len, embedding_dim=64, dropout_ratio=0.3, units=128):
@@ -26,6 +27,8 @@ def build_model(vocab_size, max_len, embedding_dim=64, dropout_ratio=0.3, units=
 
 
 def main():
+    set_global_seed()
+
     data = load_data()
     X_train, X_test, y_train, y_test = split_data(data)
     tokenizer, vocab_size, max_len, X_train_encoded = build_tokenizer(X_train)
@@ -35,6 +38,12 @@ def main():
     tokenizer_json = tokenizer.to_json()
     with open(TOKENIZER_JSON, 'w') as f:
         json.dump(tokenizer_json, f)
+
+    # predict_spam이 패딩할 때 쓸 max_len을 tokenizer와 같이 저장. 이게 없으면
+    # mailbox.py가 예전 학습 실행 당시의 max_len을 하드코딩해서 써야 하고,
+    # 재학습 후 실제 max_len이 달라지면 패딩 길이가 어긋나 예측이 조용히 틀어짐.
+    with open(MODEL_CONFIG_JSON, 'w', encoding='utf-8') as f:
+        json.dump({'max_len': max_len}, f)
 
     model = build_model(vocab_size, max_len)
     es = EarlyStopping(monitor='val_f1_score', mode='max', verbose=1, patience=15)

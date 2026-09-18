@@ -9,17 +9,31 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 
-from .config import PREDICT_MAX_LEN, TKRNN_MODEL, TOKENIZER_JSON
+from .config import FALLBACK_MAX_LEN, MODEL_CONFIG_JSON, TKRNN_MODEL, TOKENIZER_JSON
 from .metrics import f1_score
 
 
 def load_artifacts():
+    """tokenizer, 모델, 예측 시 패딩에 쓸 max_len을 로드.
+
+    max_len은 model_config.json에서 읽는다 (train_tk_rnn.py가 학습 당시
+    실제 계산된 max_len을 저장해둠). 재학습해도 이 값이 같이 갱신되므로
+    하드코딩된 값과 어긋나서 예측이 조용히 틀어지는 일이 없다. 파일이 아직
+    없는 예전 아티팩트라면 FALLBACK_MAX_LEN을 쓴다.
+    """
     with open(TOKENIZER_JSON, 'r') as f:
         tokenizer_json = json.load(f)
         tokenizer = tokenizer_from_json(tokenizer_json)
 
     model = load_model(TKRNN_MODEL, custom_objects={'f1_score': f1_score})
-    return tokenizer, model
+
+    try:
+        with open(MODEL_CONFIG_JSON, 'r', encoding='utf-8') as f:
+            max_len = json.load(f)['max_len']
+    except FileNotFoundError:
+        max_len = FALLBACK_MAX_LEN
+
+    return tokenizer, model, max_len
 
 
 def search_with_retry(mail, search_condition, retries=3, delay=5):
@@ -39,7 +53,7 @@ def search_with_retry(mail, search_condition, retries=3, delay=5):
     raise Exception("검색에 실패했습니다. 재시도 횟수를 초과했습니다.")
 
 
-def predict_spam(subject, tokenizer, model, max_len=PREDICT_MAX_LEN):
+def predict_spam(subject, tokenizer, model, max_len):
     """메일 제목 기준으로 스팸 여부 예측. 1=중요문서, 0=스팸."""
     processed_subject = subject.lower()
     processed_subject = tokenizer.texts_to_sequences([processed_subject])
@@ -172,10 +186,7 @@ def safe_decode_header(header_value):
                     decoded_string += part.decode("utf-8", errors="ignore")
                 else:
                     decoded_string += part.decode(encoding if encoding else "utf-8")
-            except (UnicodeDecodeError, TypeError):
-                # NOTE: 원본 노트북 그대로 - 여기서 참조하는 `e`는 정의된 적 없음.
-                # 실제로 디코딩 오류가 나면 이 print문 자체가 NameError를 던져서
-                # 원래 처리하려던 예외 대신 새 예외로 죽는다. 별도 이슈로 수정 예정.
+            except (UnicodeDecodeError, TypeError) as e:
                 print(f"디코딩 오류: {e}")
                 decoded_string += part.decode("utf-8", errors="ignore")
         else:
@@ -184,7 +195,7 @@ def safe_decode_header(header_value):
     return decoded_string
 
 
-def manual_test(tokenizer, model):
+def manual_test(tokenizer, model, max_len):
     """콘솔에서 제목 하나씩 입력해서 예측 결과를 바로 확인하는 수동 테스트 루프."""
     while True:
         subject = input("메일 제목을 입력하세요 (종료하려면 'exit' 입력): ")
@@ -192,7 +203,7 @@ def manual_test(tokenizer, model):
             print("예측을 종료합니다.")
             break
 
-        result = predict_spam(subject, tokenizer, model)
+        result = predict_spam(subject, tokenizer, model, max_len)
         if result == 1:
             print("이 메일은 중요문서입니다.")
         else:
@@ -210,7 +221,7 @@ def run_cleanup():
     - 판단 근거는 메일 제목 한 줄뿐이며, 삭제 전 사람이 확인하는 단계가 없음.
     이 동작은 원본 노트북 그대로 옮긴 것이며 안전장치 추가는 별도 이슈로 처리 예정.
     """
-    tokenizer, model = load_artifacts()
+    tokenizer, model, max_len = load_artifacts()
 
     try:
         imap_server_input = input("사용할 메일서비스명 (gmail, naver): ").strip().lower()
@@ -260,7 +271,7 @@ def run_cleanup():
                                 msg = email.message_from_bytes(response_part[1])
                                 subject = safe_decode_header(msg["Subject"])
 
-                                prediction = predict_spam(subject, tokenizer, model)
+                                prediction = predict_spam(subject, tokenizer, model, max_len)
 
                                 if prediction == 0:
                                     spam_count += 1

@@ -3,7 +3,7 @@ from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.preprocessing.text import Tokenizer
 
-from .config import DATA_CSV
+from .config import DATA_CSV, SEED
 
 
 def load_data(path=DATA_CSV):
@@ -23,7 +23,7 @@ def info(data_frame):
     print(data_frame.groupby('head').size().reset_index(name='count'))
 
 
-def split_data(data_frame, test_size=0.2, random_state=0):
+def split_data(data_frame, test_size=0.2, random_state=SEED):
     X_data = data_frame['body']
     y_data = data_frame['head']
     X_data = [sample if sample == sample else '0' for sample in X_data]

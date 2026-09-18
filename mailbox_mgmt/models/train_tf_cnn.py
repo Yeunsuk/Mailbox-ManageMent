@@ -7,6 +7,7 @@ from tensorflow.keras.models import Sequential
 
 from ..data_prep import load_data, split_data
 from ..metrics import f1_score
+from ..seed import set_global_seed
 
 
 def vectorize(X_train, X_test, max_features=5000):
@@ -37,6 +38,8 @@ def build_model(input_dim, num_filters=64, kernel_size=5, dropout_ratio=0.4):
 
 
 def main():
+    set_global_seed()
+
     data = load_data()
     X_train, X_test, y_train, y_test = split_data(data)
 

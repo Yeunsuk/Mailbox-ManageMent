@@ -7,6 +7,7 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 
 from ..data_prep import build_tokenizer, load_data, split_data
 from ..metrics import f1_score
+from ..seed import set_global_seed
 from .results import save_tuning_result
 
 PROJECT_NAME = 'TK_RNN_c9'
@@ -45,6 +46,8 @@ def build_model_factory(vocab_size, max_len):
 
 
 def main():
+    set_global_seed()
+
     data = load_data()
     X_train, X_test, y_train, y_test = split_data(data)
     tokenizer, vocab_size, max_len, X_train_encoded = build_tokenizer(X_train)
