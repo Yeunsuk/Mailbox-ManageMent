@@ -210,16 +210,19 @@ def manual_test(tokenizer, model, max_len):
             print("이 메일은 쓰레기기입니다.")
 
 
-def run_cleanup():
+def run_cleanup(dry_run=True):
     """실제 메일함에 로그인해서 예측 결과에 따라 스팸 메일을 휴지통으로 이동/삭제.
 
-    주의:
-    - 네이버 계정은 \\Deleted 플래그 + mail.expunge()로 처리되어 즉시 영구 삭제됨
-      (휴지통 경유 없음). Gmail은 Trash 라벨 이동이라 상대적으로 안전함.
-    - 복구("원상복구 ㄱㄱ?") 여부와 무관하게 expunge()는 항상 호출됨: 복구를
-      선택하지 않으면 그대로 영구 삭제되니 사용 전 반드시 인지할 것.
-    - 판단 근거는 메일 제목 한 줄뿐이며, 삭제 전 사람이 확인하는 단계가 없음.
-    이 동작은 원본 노트북 그대로 옮긴 것이며 안전장치 추가는 별도 이슈로 처리 예정.
+    안전장치:
+    - dry_run=True(기본값)면 예측 결과만 목록으로 보여주고 서버 상태는
+      건드리지 않음. 실제로 이동/삭제하려면 dry_run=False로 호출
+      (CLI에서는 `--live` 플래그).
+    - dry_run=False일 때도 스팸으로 분류된 목록을 먼저 보여주고, '삭제'를
+      정확히 입력해야 실제 이동/삭제가 진행됨 (사람 확인 단계).
+    - 네이버 계정은 \\Deleted 플래그 + mail.expunge()가 즉시 영구 삭제라서,
+      expunge 직전에 '영구삭제'를 입력해야만 실행됨. Gmail은 Trash 라벨
+      이동이라 expunge가 스팸 분류 결과에 영향 없음.
+    - 판단 근거는 여전히 메일 제목 한 줄뿐 — 확인 단계를 반드시 눈으로 볼 것.
     """
     tokenizer, model, max_len = load_artifacts()
 
@@ -245,9 +248,6 @@ def run_cleanup():
             else:
                 email_user += '@naver.com'
 
-        important_count = 0
-        spam_count = 0
-
         try:
             mail = imaplib.IMAP4_SSL(imap_server, 993)
             mail.login(email_user, email_pass)
@@ -262,6 +262,8 @@ def run_cleanup():
                     messages = search_with_retry(mail, search_condition)
                     message_ids = messages[0].split()
 
+                    # 1단계: 예측만 수행, 서버 상태는 아직 건드리지 않음.
+                    decisions = []
                     for index, msg_id in enumerate(message_ids, start=1):
                         print(f"{index}/{len(message_ids)} 번째 메일 처리 중...")
 
@@ -270,24 +272,49 @@ def run_cleanup():
                             if isinstance(response_part, tuple):
                                 msg = email.message_from_bytes(response_part[1])
                                 subject = safe_decode_header(msg["Subject"])
-
                                 prediction = predict_spam(subject, tokenizer, model, max_len)
+                                decisions.append((index, msg_id, subject, prediction))
 
-                                if prediction == 0:
-                                    spam_count += 1
-                                    if imap_server_input == "gmail":
-                                        mail.store(msg_id, '+X-GM-LABELS', trash_folder)
-                                    else:
-                                        mail.store(msg_id, '+FLAGS', '\\Deleted')
-                                    print(f"메일 {index}번을 휴지통으로 이동시킴.")
-                                else:
-                                    important_count += 1
+                    spam_items = [d for d in decisions if d[3] == 0]
+                    important_count = len(decisions) - len(spam_items)
 
-                    print(f"중요 메일 {important_count}개 확인됨.")
-                    print(f"스팸 메일 {spam_count}개 이동됨.")
+                    print(f"\n중요 메일 {important_count}개 확인됨.")
+                    print(f"스팸으로 분류된 메일 {len(spam_items)}개:")
+                    for index, _, subject, _ in spam_items:
+                        print(f"  [{index}] {subject}")
+
+                    if dry_run:
+                        print("\ndry-run 모드 - 실제로 이동/삭제하지 않음. 실행하려면 dry_run=False (CLI: --live).")
+                        mail.close()
+                        mail.logout()
+                        return
+
+                    if not spam_items:
+                        print("\n이동/삭제할 메일이 없음.")
+                        mail.close()
+                        mail.logout()
+                        return
+
+                    confirm = input(f"\n위 {len(spam_items)}개 메일을 휴지통으로 이동/삭제합니다. 계속하려면 '삭제' 입력: ")
+                    if confirm != '삭제':
+                        print("취소함. 서버 상태를 변경하지 않았습니다.")
+                        mail.close()
+                        mail.logout()
+                        return
+
+                    # 2단계: 확인받은 항목만 실제로 적용.
+                    for index, msg_id, subject, _ in spam_items:
+                        if imap_server_input == "gmail":
+                            mail.store(msg_id, '+X-GM-LABELS', trash_folder)
+                        else:
+                            mail.store(msg_id, '+FLAGS', '\\Deleted')
+                        print(f"메일 {index}번을 휴지통으로 이동시킴.")
 
                 except Exception as e:
                     print(f"오류: {e}")
+                    mail.close()
+                    mail.logout()
+                    return
 
                 if input("원상복구 ㄱㄱ?: ") == 'ㄱㄱ':
                     mail.select(trash_folder)
@@ -308,7 +335,18 @@ def run_cleanup():
                     except Exception as e:
                         print(f"검색 실패: {e}")
 
-                mail.expunge()
+                if imap_server_input == "naver":
+                    expunge_confirm = input(
+                        "네이버 계정은 expunge()가 \\Deleted 표시된 메일을 즉시 영구 삭제합니다. "
+                        "계속하려면 '영구삭제' 입력 (그 외 입력 시 \\Deleted 표시만 남고 삭제 안 함): "
+                    )
+                    if expunge_confirm == '영구삭제':
+                        mail.expunge()
+                    else:
+                        print("expunge 취소함 - 메일은 \\Deleted 표시만 된 채 실제로 삭제되지 않았습니다.")
+                else:
+                    mail.expunge()
+
                 mail.close()
                 mail.logout()
 
@@ -320,4 +358,6 @@ def run_cleanup():
 
 
 if __name__ == "__main__":
-    run_cleanup()
+    import sys
+
+    run_cleanup(dry_run='--live' not in sys.argv)
