@@ -3,7 +3,7 @@ import json
 import matplotlib.pyplot as plt
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from tensorflow.keras.layers import Dense, Dropout, Embedding, LSTM
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Embedding
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 
@@ -48,7 +48,9 @@ def main():
     model = build_model(vocab_size, max_len)
     es = EarlyStopping(monitor='val_f1_score', mode='max', verbose=1, patience=15)
     mc = ModelCheckpoint(str(TKRNN_MODEL), monitor='val_loss', mode='min', verbose=1, save_best_only=True)
-    history = model.fit(X_train_padded, y_train, epochs=100, batch_size=64, validation_split=0.2, callbacks=[es, mc])
+    history = model.fit(
+        X_train_padded, y_train, epochs=100, batch_size=64, validation_split=0.2, callbacks=[es, mc],
+    )
 
     X_test_encoded = tokenizer.texts_to_sequences(X_test)
     X_test_padded = pad_sequences(X_test_encoded, maxlen=max_len)

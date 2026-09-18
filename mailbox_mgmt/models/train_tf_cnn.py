@@ -21,7 +21,9 @@ def vectorize(X_train, X_test, max_features=5000):
 
 def build_model(input_dim, num_filters=64, kernel_size=5, dropout_ratio=0.4):
     model = Sequential()
-    model.add(Conv1D(num_filters, kernel_size, padding='valid', activation='relu', input_shape=(input_dim, 1)))
+    model.add(Conv1D(
+        num_filters, kernel_size, padding='valid', activation='relu', input_shape=(input_dim, 1),
+    ))
     model.add(GlobalMaxPooling1D())
     model.add(Dropout(dropout_ratio))
     model.add(Dense(128, activation='relu', kernel_regularizer=regularizers.l2(0.01)))
@@ -47,8 +49,12 @@ def main():
 
     model = build_model(X_train_tfidf.shape[1])
     es = EarlyStopping(monitor='val_f1_score', mode='max', verbose=1, patience=5)
-    mc = ModelCheckpoint('best_model_TFCNN.keras', monitor='val_loss', mode='min', verbose=1, save_best_only=True)
-    history = model.fit(X_train_tfidf, y_train, epochs=100, batch_size=128, validation_split=0.2, callbacks=[es, mc])
+    mc = ModelCheckpoint(
+        'best_model_TFCNN.keras', monitor='val_loss', mode='min', verbose=1, save_best_only=True,
+    )
+    history = model.fit(
+        X_train_tfidf, y_train, epochs=100, batch_size=128, validation_split=0.2, callbacks=[es, mc],
+    )
 
     # 학습 때 쓴 vectorizer(X_test_tfidf)로 그대로 평가. 이전엔 max_features가 다른
     # 새 vectorizer로 다시 fit해서 모델이 학습 당시와 다른 shape/의미의 입력을

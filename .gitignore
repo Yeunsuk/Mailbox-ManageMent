@@ -8,3 +8,5 @@ best_model_*.bin
 !artifacts/best_model_TKRNN.keras
 keras_tuner/
 tuning_results/
+.pytest_cache/
+.ruff_cache/

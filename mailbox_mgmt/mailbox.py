@@ -284,7 +284,10 @@ def run_cleanup(dry_run=True):
                         print(f"  [{index}] {subject}")
 
                     if dry_run:
-                        print("\ndry-run 모드 - 실제로 이동/삭제하지 않음. 실행하려면 dry_run=False (CLI: --live).")
+                        print(
+                            "\ndry-run 모드 - 실제로 이동/삭제하지 않음. "
+                            "실행하려면 dry_run=False (CLI: --live)."
+                        )
                         mail.close()
                         mail.logout()
                         return
@@ -295,7 +298,10 @@ def run_cleanup(dry_run=True):
                         mail.logout()
                         return
 
-                    confirm = input(f"\n위 {len(spam_items)}개 메일을 휴지통으로 이동/삭제합니다. 계속하려면 '삭제' 입력: ")
+                    confirm = input(
+                        f"\n위 {len(spam_items)}개 메일을 휴지통으로 이동/삭제합니다. "
+                        "계속하려면 '삭제' 입력: "
+                    )
                     if confirm != '삭제':
                         print("취소함. 서버 상태를 변경하지 않았습니다.")
                         mail.close()

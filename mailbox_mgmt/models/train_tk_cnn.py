@@ -41,8 +41,12 @@ def main():
     model = build_model(vocab_size)
 
     es = EarlyStopping(monitor='val_f1_score', mode='max', verbose=1, patience=15)
-    mc = ModelCheckpoint('best_model_TKCNN.keras', monitor='val_loss', mode='min', verbose=1, save_best_only=True)
-    history = model.fit(X_train_padded, y_train, epochs=100, batch_size=64, validation_split=0.2, callbacks=[es, mc])
+    mc = ModelCheckpoint(
+        'best_model_TKCNN.keras', monitor='val_loss', mode='min', verbose=1, save_best_only=True,
+    )
+    history = model.fit(
+        X_train_padded, y_train, epochs=100, batch_size=64, validation_split=0.2, callbacks=[es, mc],
+    )
 
     X_test_encoded = tokenizer.texts_to_sequences(X_test)
     X_test_padded = pad_sequences(X_test_encoded, maxlen=max_len)

@@ -1,8 +1,8 @@
 import keras_tuner as kt
 from sklearn.feature_extraction.text import TfidfVectorizer
 from tensorflow.keras import regularizers
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from tensorflow.keras.layers import Dense, Dropout, GRU
+from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.layers import GRU, Dense, Dropout
 from tensorflow.keras.models import Sequential
 
 from ..data_prep import load_data, split_data

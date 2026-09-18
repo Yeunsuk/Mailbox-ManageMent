@@ -1,7 +1,7 @@
 import keras_tuner as kt
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
-from tensorflow.keras.layers import Dense, Dropout, Embedding, LSTM
+from tensorflow.keras.layers import LSTM, Dense, Dropout, Embedding
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 

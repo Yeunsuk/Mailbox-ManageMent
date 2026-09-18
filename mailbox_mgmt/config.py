@@ -2,9 +2,11 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# 원본 Kaggle 스팸 데이터셋 + 크롤링 데이터가 합쳐진 학습용 CSV (컬럼: head, body)
+# 원본 Kaggle 스팸 데이터셋 + 사람이 라벨링한 크롤링 데이터가 합쳐진 학습용 CSV
+# (컬럼: head, body). mail_crawler.label_subjects()만 여기 append 함.
 DATA_CSV = BASE_DIR / "spam(k).csv"
-# mail_crawler.crawl_subjects()가 생성하는 원본(euc-kr) 크롤링 결과
+# mail_crawler.crawl_subjects()가 생성하는 라벨 없는 크롤링 원본(제목만 1열).
+# label_subjects()가 이걸 읽어 사람이 확인한 것만 DATA_CSV로 옮긴다.
 RAW_CRAWL_CSV = BASE_DIR / "spam(K).csv"
 
 ARTIFACTS_DIR = BASE_DIR / "artifacts"
